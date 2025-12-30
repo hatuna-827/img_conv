@@ -8,11 +8,29 @@
 
 変換したい画像のパスと出力する画像のパスを入力します。
 
+## grayscale
+
+画像をグレースケールに変換します。
+
+変換したい画像のパスと出力する画像のパスを入力します。
+
+## binarization
+
+画像を白黒に変換します。
+
+変換したい画像のパスと出力する画像のパスを入力します。
+
+<!--
+## outline
+
+画像を二値化し、アウトラインをSVGで出力します。
+
+変換したい画像のパスと出力するSVGのパスを入力します。
+-->
+
 ## 注意
 
-PNGの透過部分は黒くなります。
-
-```opencv```が必要です。
+`opencv`が必要です。
 
 ```bash
 # pip3 install
@@ -23,5 +41,3 @@ sudo apt install python3-pip
 pip install opencv-python
 pip install opencv-contrib-python
 ```
-
-[Ubuntu に python の opencv をインストール #Python - Qiita](https://qiita.com/mugimugi/items/64b710c0c506fc13d19d)
