@@ -5,22 +5,23 @@ class pointer:
     direction_svg = ["h", "v", "h-", "v-"]
     direction_d = [[1, 0], [0, 1], [-1, 0], [0, -1]]
 
-    def __init__(self, pos, dir):
+    def __init__(self, pos, dir, scale):
         self.dir = dir
-        self.path = f"M{pos[0]},{pos[1]}"
         self.dis = 0
+        self.scale = scale
+        self.path = f"M{pos[0]*self.scale},{pos[1]*self.scale}"
 
     def go(self):
         self.dis += 1
 
     def right(self):
-        self.path += f"{self.direction_svg[self.dir]}{self.dis}"
+        self.path += f"{self.direction_svg[self.dir]}{self.dis*self.scale}"
         self.dir += 1
         self.dir %= 4
         self.dis = 0
 
     def left(self):
-        self.path += f"{self.direction_svg[self.dir]}{self.dis}"
+        self.path += f"{self.direction_svg[self.dir]}{self.dis*self.scale}"
         self.dir += 3
         self.dir %= 4
         self.dis = 0
@@ -29,17 +30,17 @@ class pointer:
         return self.path
 
 
-def get_outline(map, height, width, start_h, start_w, r):
+def get_outline(map, height, width, scale, start_h, start_w, r):
     direction_d = [[1, 0], [0, 1], [-1, 0], [0, -1]]
     direction_c = [[0, -1], [0, 0], [-1, 0], [-1, -1]]
     pos = [start_w, start_h]
     if r == 1:
-        p = pointer([start_w, start_h], 0)
+        p = pointer([start_w, start_h], 0, scale)
         first_check_dir = 0
         second_check_dir = 1
         turn = [p.left, p.right]
     elif r == -1:
-        p = pointer([start_w, start_h], 1)
+        p = pointer([start_w, start_h], 1, scale)
         first_check_dir = 1
         second_check_dir = 0
         turn = [p.right, p.left]
@@ -92,37 +93,42 @@ def closed_area(height, width, map):
     return map
 
 
+def outline(image, scale):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    value, img = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+    height = len(img)
+    width = len(img[0])
+    outline = ""
+    start_dir = 1
+    for start_h in range(height):
+        for start_w in range(width):
+            if img[start_h][start_w] == 0:
+                outline += get_outline(
+                    img, height, width, scale, start_h, start_w, start_dir
+                )
+                img = closed_area(height, width, img)
+                start_dir *= -1
+    return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width*scale} {height*scale}"><path d="{outline}"/></svg>'
+
+
 def main():
     inpath = input()
     outpath = input()
+    scale = int(input())
     data = cv2.imread(inpath, -1)
     gray = cv2.cvtColor(data, cv2.COLOR_BGR2GRAY)
     value, img = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
     height = len(img)
     width = len(img[0])
-    outline = ""
-
     print("height:", height, "width:", width)
-    print("-" * width)
+    print("-" * (width * 2 - 1))
     for h in range(height):
         for w in range(width):
-            print("#" if img[h][w] == 0 else " ", end="")
+            print("#" if img[h][w] == 0 else " ", end=" ")
         print()
-    print("-" * width)
-
-    start_dir = 1
-
-    for start_h in range(height):
-        for start_w in range(width):
-            if img[start_h][start_w] == 0:
-                outline += get_outline(img, height, width, start_h, start_w, start_dir)
-                img = closed_area(height, width, img)
-                start_dir *= -1
-
+    print("-" * (width * 2 - 1))
     with open(outpath, mode="w") as f:
-        f.write(
-            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}"><path d="{outline}"/></svg>'
-        )
+        f.write(outline(data, scale))
 
 
 if __name__ == "__main__":
