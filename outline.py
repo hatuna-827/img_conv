@@ -30,27 +30,27 @@ class pointer:
         return self.path
 
 
-def get_outline(map, height, width, scale, start_h, start_w, r):
+def get_outline(map, height, width, scale, x, y, r):
     direction_d = [[1, 0], [0, 1], [-1, 0], [0, -1]]
     direction_c = [[0, -1], [0, 0], [-1, 0], [-1, -1]]
-    pos = [start_w, start_h]
+    pos = [y, x]
     if r == 1:
-        p = pointer([start_w, start_h], 0, scale)
+        p = pointer([y, x], 0, scale)
         first_check_dir = 0
         second_check_dir = 1
         turn = [p.left, p.right]
     elif r == -1:
-        p = pointer([start_w, start_h], 1, scale)
+        p = pointer([y, x], 1, scale)
         first_check_dir = 1
         second_check_dir = 0
         turn = [p.right, p.left]
     first = True
-    while first or pos != [start_w, start_h]:
+    while first or pos != [y, x]:
         first = False
-        y1 = pos[1] + direction_c[(p.dir + first_check_dir) % 4][1]
         x1 = pos[0] + direction_c[(p.dir + first_check_dir) % 4][0]
-        y2 = pos[1] + direction_c[(p.dir + second_check_dir) % 4][1]
+        y1 = pos[1] + direction_c[(p.dir + first_check_dir) % 4][1]
         x2 = pos[0] + direction_c[(p.dir + second_check_dir) % 4][0]
+        y2 = pos[1] + direction_c[(p.dir + second_check_dir) % 4][1]
         if y1 != -1 and y1 != height and x1 != -1 and x1 != width and map[y1][x1] == 0:
             turn[0]()
         elif y2 == -1 or y2 == height or x2 == -1 or x2 == width or map[y2][x2] == 255:
@@ -59,6 +59,36 @@ def get_outline(map, height, width, scale, start_h, start_w, r):
         pos[0] += direction_d[p.dir][0]
         pos[1] += direction_d[p.dir][1]
     return p.get()
+
+
+def fill_black(map, height, width, x, y):
+    pattern = [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+        [1, 1],
+        [-1, -1],
+        [-1, 1],
+        [1, -1],
+    ]
+    stack = []
+    if map[x][y] == 0:
+        stack.append([x, y])
+    while len(stack) != 0:
+        [x, y] = stack.pop()
+        map[x][y] = 255
+        for dx, dy in pattern:
+            nx, ny = x + dx, y + dy
+            if (
+                nx != 0
+                and ny != 0
+                and nx != height
+                and ny != width
+                and map[nx][ny] == 0
+            ):
+                stack.append([nx, ny])
+    return map
 
 
 def closed_area(height, width, map):
@@ -100,14 +130,19 @@ def outline(image, scale):
     width = len(img[0])
     outline = ""
     start_dir = 1
-    for start_h in range(height):
-        for start_w in range(width):
-            if img[start_h][start_w] == 0:
-                outline += get_outline(
-                    img, height, width, scale, start_h, start_w, start_dir
-                )
-                img = closed_area(height, width, img)
-                start_dir *= -1
+    while True:
+        finish = True
+        map = img.copy()
+        for x in range(height):
+            for y in range(width):
+                if map[x][y] == 0:
+                    finish = False
+                    outline += get_outline(map, height, width, scale, x, y, start_dir)
+                    map = fill_black(map, height, width, x, y)
+        if finish:
+            break
+        img = closed_area(height, width, img)
+        start_dir *= -1
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width*scale} {height*scale}"><path d="{outline}"/></svg>'
 
 
@@ -120,15 +155,19 @@ def main():
     value, img = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
     height = len(img)
     width = len(img[0])
+    output(img, height, width)
+    with open(outpath, mode="w") as f:
+        f.write(outline(data, scale))
+
+
+def output(map, height, width):
     print("height:", height, "width:", width)
     print("-" * (width * 2 - 1))
     for h in range(height):
         for w in range(width):
-            print("#" if img[h][w] == 0 else " ", end=" ")
+            print("#" if map[h][w] == 0 else " ", end=" ")
         print()
     print("-" * (width * 2 - 1))
-    with open(outpath, mode="w") as f:
-        f.write(outline(data, scale))
 
 
 if __name__ == "__main__":
